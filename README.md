@@ -3,3 +3,4 @@
 There are some codes in tutorial sessions:
 - pytorch tutorial
 - hugging face tutorial
+- python tutorial
