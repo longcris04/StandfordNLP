@@ -10,6 +10,32 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
+# Load model and tokenizer
+model_name = "sshleifer/distilbart-cnn-12-6"
+tokenizer = AutoTokenizer.from_pretrained(model_name)
+model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
+# load model to gpu for faster inference
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+model.to(device)
+print(f"Using device: {device}")
+model.eval()
+
+
+    # Upload cnn_dm_200.json file
+
+    # Load 200-sample dataset
+with open("cnn_dm_200.json", "r") as f:
+    dataset = json.load(f)
+
+print("Because the limited computation resource in google collab, I only use first 100 samples from the dataset to run experiment.")
+dataset = dataset[:100]
+
+print(f"Loaded {len(dataset)} samples.")
+print("\nExample article:")
+print(dataset[0]["article"])
+print("\nReference summary:")
+print(dataset[0]["highlights"])
+
 
 
 def greedy_decode(input_ids, max_length=45):
@@ -299,7 +325,7 @@ def compute_rouge_l(reference: str, generated: str) -> dict:
 
     return {'precision': precision, 'recall': recall, 'f1': f1}
 
-def generate_summary_custom(article_text, strategy="greedy", max_length=30, temperature=1.0, k=5, p=0.9, beam_size=2, no_repeat_ngram_size=3):
+def generate_summary_custom(article_text, strategy="greedy", max_length=45, temperature=1.0, k=5, p=0.9, beam_size=2, no_repeat_ngram_size=3):
     input_ids = tokenizer(article_text, return_tensors="pt", truncation=True, max_length=1024).input_ids
     if strategy == "greedy":
         return greedy_decode(input_ids,max_length=max_length)
@@ -316,31 +342,7 @@ def generate_summary_custom(article_text, strategy="greedy", max_length=30, temp
 
 
 def inference():
-    # Load model and tokenizer
-    model_name = "sshleifer/distilbart-cnn-12-6"
-    tokenizer = AutoTokenizer.from_pretrained(model_name)
-    model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
-    # load model to gpu for faster inference
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model.to(device)
-    print(f"Using device: {device}")
-    model.eval()
-
-
-    # Upload cnn_dm_200.json file
-
-    # Load 200-sample dataset
-    with open("cnn_dm_200.json", "r") as f:
-        dataset = json.load(f)
-
-    print("Because the limited computation resource in google collab, I only use first 100 samples from the dataset to run experiment.")
-    dataset = dataset[:100]
-
-    print(f"Loaded {len(dataset)} samples.")
-    print("\nExample article:")
-    print(dataset[0]["article"])
-    print("\nReference summary:")
-    print(dataset[0]["highlights"])
+    
     
     # Decoding strategies
     strategies = ["greedy", "top_k", "top_p", "beam", "beam_block"]
@@ -358,7 +360,7 @@ def inference():
         for strategy in strategies:
             try:
                 generated = generate_summary_custom(article, strategy=strategy)
-
+                print(f"here: {generated}")
                 rouge1 = compute_rouge_n(reference, generated, n=1)["f1"]
                 rouge2 = compute_rouge_n(reference, generated, n=2)["f1"]
                 rougel = compute_rouge_l(reference, generated)["f1"]
@@ -398,6 +400,7 @@ def inference():
     
         
         # create a dataframe to store the results with different beam sizes
+    print(f"Start experiment with different beam sizes")
     beam_sizes = [1,2,3,4]
     beam_sizes_results = pd.DataFrame(columns=beam_sizes)
     max_length = 45
@@ -407,12 +410,14 @@ def inference():
     k = 5
     p = 0.9
     for beam in beam_sizes:
+        print(f"start testing beam size {beam}")
         for i,sample in enumerate(dataset[:num_samples]):
             
             article = sample["article"]
             reference = sample["highlights"]
             generated = generate_summary_custom(article, strategy="beam", max_length=max_length, temperature=temperature,k=k,p=p, beam_size=beam, no_repeat_ngram_size=no_repeat_ngram_size)
             # generated = "Students and faculty members marched Wednesday afternoon chanting"
+            print(f"finished generate sample {i}")
             rouge1 = compute_rouge_n(reference, generated, n=1)["f1"]
             rouge2 = compute_rouge_n(reference, generated, n=2)["f1"]
             rougel = compute_rouge_l(reference, generated)["f1"]
@@ -422,6 +427,7 @@ def inference():
             
 
     # create a dataframe to store the results with different beam sizes
+    print(f"Start experiment with different temperatures")
     temperatures = [0.5,1,2,5]
     temperatures_results = pd.DataFrame(columns=temperatures)
     max_length = 45
@@ -431,12 +437,14 @@ def inference():
     k = 5
     p = 0.5
     for temperature in temperatures:
+        print(f"start testing temperature {temperature}")
         for i,sample in enumerate(dataset[:num_samples]):
             
             article = sample["article"]
             reference = sample["highlights"]
             generated = generate_summary_custom(article, strategy="top_p", max_length=max_length, temperature=temperature,k=k,p=p, beam_size=beam_size, no_repeat_ngram_size=no_repeat_ngram_size)
             # generated = "Students and faculty members marched Wednesday afternoon chanting"
+            print(f"finished generate sample {i}")
             rouge1 = compute_rouge_n(reference, generated, n=1)["f1"]
             rouge2 = compute_rouge_n(reference, generated, n=2)["f1"]
             rougel = compute_rouge_l(reference, generated)["f1"]

@@ -1,0 +1,30 @@
+#!/bin/bash
+#SBATCH --job-name=giangnl_slurm # define job name
+#SBATCH --nodes=1             # define node
+#SBATCH --gpus-per-node=1     # define gpu limmit in 1 node
+#SBATCH --ntasks=1            # define number tasks
+#SBATCH --cpus-per-task=24    # There are 24 CPU cores
+#SBATCH --time=3-00:10:00     # Max running time = 3 days 10 minutes
+#SBATCH --nodelist=node004
+#SBATCH --output=slurm_output_%j.out # Standard output
+#SBATCH --error=slurm_error_%j.err #Standard error
+
+
+
+# nvidia-smi
+
+# source /data2/cmdir/home/ioit111/.bashrc
+
+# python -u test_env.py
+# python --version
+# python -u train.py -i=224 -e=100 -b=1024 -r=True -l=0.001
+# python -u my_models.py
+python -u Assignment2.py
+# python -u models.py
+# python -u my_datasets.py
+
+
+
+
+echo "-----------------------------"
+echo "Exit worker node"
